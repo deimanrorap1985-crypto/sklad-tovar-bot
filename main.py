@@ -11,15 +11,18 @@ headers = {
     "Content-Type": "application/json"
 }
 
-print("🚀 BOT STARTED ON RAILWAY")
+print("🚀 BOT STARTED ON RAILWAY v3")
 
 board = []
-board_message_id = None
 offset = 0
 
 while True:
     try:
-        r = requests.get(f"{API_URL}/updates?offset={offset}&limit=30", headers=headers, timeout=15)
+        r = requests.get(
+            f"{API_URL}/updates?offset={offset}&limit=20", 
+            headers=headers, 
+            timeout=30   # увеличил таймаут
+        )
         
         if r.status_code == 200:
             for update in r.json().get("result", []):
@@ -30,22 +33,27 @@ while True:
                     chat_id = msg.get("chat", {}).get("id")
                     text = str(msg.get("body", {}).get("text", "") or msg.get("text", "")).strip()
 
-                    print(f"📩 Received: {text}")
+                    print(f"📩 Получено: {text}")
 
                     if text in ["/доска", "/board", "/startboard"]:
-                        data = {"text": "📦 ДОСКА ЗАКАЗОВ СОЗДАНА\nКидай номера заказов ниже"}
-                        resp = requests.post(f"{API_URL}/messages?chat_id={chat_id}", headers=headers, json=data)
+                        data = {"text": "📦 ДОСКА ЗАКАЗОВ СОЗДАНА\n\nКидай номера заказов"}
+                        requests.post(f"{API_URL}/messages?chat_id={chat_id}", headers=headers, json=data)
                         print("✅ Доска отправлена")
 
                     elif re.search(r'\b\d{4,}\b', text):
                         order_id = re.search(r'\b(\d{4,})\b', text).group(1)
                         if not any(o.get("id") == order_id for o in board):
                             board.append({"id": order_id, "taken_by": None, "done_by": None})
-                            print(f"✅ Заказ добавлен: {order_id}")
+                            print(f"✅ Заказ {order_id} добавлен")
                             data = {"text": f"✅ Заказ {order_id} добавлен в доску"}
                             requests.post(f"{API_URL}/messages?chat_id={chat_id}", headers=headers, json=data)
 
+    except requests.exceptions.Timeout:
+        print("⏳ Timeout - продолжаем...")
+        time.sleep(5)
+        continue
     except Exception as e:
-        print("Error:", str(e)[:100])
+        print("Ошибка:", str(e)[:100])
+        time.sleep(5)
 
     time.sleep(1)
